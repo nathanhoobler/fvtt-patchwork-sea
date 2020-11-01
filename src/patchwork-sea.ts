@@ -11,8 +11,10 @@
  */
 
 // Import TypeScript modules
+import { PWS } from './module/config.js';
 import { registerSettings } from './module/settings.js';
 import { preloadTemplates } from './module/preloadTemplates.js';
+import { setupExplorationApp } from './module/exploration.js';
 
 /* ------------------------------------ */
 /* Initialize module					*/
@@ -36,6 +38,7 @@ Hooks.once('init', async function() {
 /* ------------------------------------ */
 Hooks.once('setup', function() {
 	// Do anything after initialization but before
+	Hooks.on('ready', setupExplorationApp);
 	// ready
 });
 

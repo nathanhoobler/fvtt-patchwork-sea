@@ -1,0 +1,63 @@
+<form class="{{cssClass}}" autocomplete="off">
+    <!-- HEADER -->
+    <div class="sheet-header">
+        <h1 class="charname">
+            <input
+                name="name"
+                type="text"
+                value="{{actor.name}}"
+                placeholder="{{localize 'PF2E.loot.LootNamePlaceholder'}}"
+            />
+        </h1>
+    </div>
+    <!-- SIDEBAR -->
+    <section class="sheet-sidebar sidebar">
+        <h2>Travel</h2>
+        <div class="partysheet-sidebar-row">
+            <div class="partysheet-sidebar-label">Maximum Speed:</div>
+            <div class="partysheet-sidebar-data">
+                {{numberFormat party.speed.max decimals=0 sign=false}} ft.
+            </div>
+        </div>
+        <div class="partysheet-sidebar-row">
+            <div class="partysheet-sidebar-label">Current Speed:</div>
+            <div class="partysheet-sidebar-data">
+                {{numberFormat party.speed.current decimals=0 sign=false}} ft.
+            </div>
+        </div>
+        <h2>Load</h2>
+        <div class="partysheet-sidebar-row">
+            <div class="partysheet-sidebar-label">Unecumbered:</div>
+            <div class="partysheet-sidebar-data">
+                <div>{{numberFormat party.load.unencumbered.current decimals=0 sign=false}}</div>
+                <div style="width: 15%"> / </div>
+                <div>{{numberFormat party.load.unencumbered.max decimals=0 sign=false}}</div>
+            </div>
+        </div>
+        <div class="partysheet-sidebar-row">
+            <div class="partysheet-sidebar-label">Encumbered:</div>
+            <div class="partysheet-sidebar-data">
+                <div>{{numberFormat party.load.encumbered.current decimals=0 sign=false}}</div>
+                <div style="width: 15%"> / </div>
+                <div>{{numberFormat party.load.encumbered.max decimals=0 sign=false}}</div>
+            </div>
+        </div>
+    </section>
+    <!-- BODY -->
+    <section class="sheet-body content">
+        <nav class="sheet-navigation" data-group="primary">
+            <nav class="sheet-tabs tabs" data-group="primary">
+                <a class="item active" data-tab="inventory">Inventory</a>
+                <a class="item" data-tab="party">Party</a>
+            </nav>
+        </nav>
+
+        <div class="sheet-content sheet-content-loot">
+            <div class="tab inventory" data-group="primary" data-tab="inventory">
+                {{> systems/pf2e/templates/actors/loot/loot-inventory.html }}
+            </div>
+            <div class="tab party" data-group="primary" data-tab="party">
+            </div>
+        </div>
+    </section>
+</form>
