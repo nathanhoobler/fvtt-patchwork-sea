@@ -2,7 +2,7 @@
   "private": true,
   "name": "patchwork-sea",
   "version": "0.1.0",
-  "description": "",
+  "description": "Custom content and functionality for adventures in the Patchwork Seas setting",
   "scripts": {
     "package": "gulp package",
     "build": "gulp build && gulp link",
@@ -11,8 +11,8 @@
     "update": "npm install --save-dev gitlab:foundry-projects/foundry-pc/foundry-pc-types",
     "lint": "gulp lint"
   },
-  "author": "",
-  "license": "",
+  "author": "Nathan Hoobler",
+  "license": "MIT",
   "devDependencies": {
     "archiver": "^5.0.2",
     "chalk": "^4.1.0",
