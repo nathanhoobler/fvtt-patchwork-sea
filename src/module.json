@@ -1,14 +1,14 @@
 {
   "name": "patchwork-sea",
-  "title": "patchwork-sea",
-  "description": "",
-  "systems": [],
+  "title": "The Patchwork Sea Setting",
+  "description": "Custom content and functionality for adventures in the Patchwork Seas setting",
+  "systems": ["pf2e"],
   "version": "0.1.0",
-  "author": "",
+  "author": "Nathan Hoobler",
   "authors": [
     {
-      "name": "",
-      "email": "",
+      "name": "Nathan Hoobler",
+      "email": "nathan.hoobler@gmail.com",
       "url": ""
     }
   ],
@@ -18,9 +18,9 @@
   ],
   "styles": ["patchwork-sea.css"],
   "packs": [],
-  "languages": [],
-  "minimumCoreVersion": "0.5.0",
-  "compatibleCoreVersion": "0.5.0",
+  "languages": [{"lang":"en","name":"English","path":"lang/en.json"}],
+  "minimumCoreVersion": "0.7.5",
+  "compatibleCoreVersion": "0.7.5",
   "url": "",
   "manifest": "",
   "download": "",
