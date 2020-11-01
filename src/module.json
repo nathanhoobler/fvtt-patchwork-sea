@@ -1,0 +1,31 @@
+{
+  "name": "patchwork-sea",
+  "title": "patchwork-sea",
+  "description": "",
+  "systems": [],
+  "version": "0.1.0",
+  "author": "",
+  "authors": [
+    {
+      "name": "",
+      "email": "",
+      "url": ""
+    }
+  ],
+  "scripts": [],
+  "esmodules": [
+    "patchwork-sea.js"
+  ],
+  "styles": ["patchwork-sea.css"],
+  "packs": [],
+  "languages": [],
+  "minimumCoreVersion": "0.5.0",
+  "compatibleCoreVersion": "0.5.0",
+  "url": "",
+  "manifest": "",
+  "download": "",
+  "license": "",
+  "readme": "",
+  "bugs": "",
+  "changelog": ""
+}
