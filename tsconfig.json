@@ -6,6 +6,15 @@
 			"ES6",
 			"ES2017"
 		],
+		"noImplicitAny": false,
+		"forceConsistentCasingInFileNames": true,
+		"esModuleInterop": true,
+		"sourceMap": true,
+		"removeComments": false,
+		"baseUrl": ".",
+		"paths": {
+			"foundry": ["types/foundry-pc-types"]
+		  },
 		"types": ["foundry-pc-types"]
 	}
 }

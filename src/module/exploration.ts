@@ -1,5 +1,20 @@
+import { calculateBulk, itemsFromActorData, stacks, formatBulk, indexBulkItemsById } from '../system/item/bulk.js';
+import { calculateEncumbrance } from '../system/item/encumbrance';
+import { getContainerMap } from '../system/item/container';
 import { PWS } from './config.js';
 const MODULE_TEMPLATE_PATH = `modules/${PWS.MODULE_NAME}/templates`;
+
+
+///////////////////////////////////////////////////////////////////////////////.
+
+export const bulkBySize = {
+    tiny: 1,
+    sm: 3,
+    med: 6,
+    lg: 12,
+    huge: 24,
+    grg: 48
+};
 
 ///////////////////////////////////////////////////////////////////////////////.
 
@@ -15,7 +30,7 @@ function extendLootSheet()
 			// @ts-ignore
             const options = super.defaultOptions;
             options.classes = options.classes ?? [];
-            options.classes = [...options.classes, 'pf2e-toolbox', 'loot-app'];
+            options.classes = [...options.classes, 'patchwork-sea', 'party-sheet'];
 
             options.tabs = options.tabs ?? [];
             return options;
@@ -49,7 +64,15 @@ function extendLootSheet()
 					}
 				};
 
-				let carriedLoad = 0;
+				// Iterate through items, allocating to containers
+				const bulkConfig = {
+					ignoreCoinBulk: game.settings.get('pf2e', 'ignoreCoinBulk'),
+					ignoreContainerOverflow: game.settings.get('pf2e', 'ignoreContainerOverflow'),
+				};
+
+				const carriedBulk = calculateBulk(itemsFromActorData(this.actor.data), stacks, false, bulkConfig);
+				let carriedLoad = carriedBulk[0].normal;
+				partyData.speed.max = 120;
 
 				const partyActors = [];
 				const porterActors = [];
@@ -65,34 +88,58 @@ function extendLootSheet()
 					}
 				}
 
-				for (const a of porterActors)
-				{
-					
-				}
-
+				let riderLoad = [];
+				let totalRiderLoad = 0;
 				for (const a of partyActors)
 				{
-					
+					const actorSize = a.data.data?.traits?.size?.value ?? 'med';
+					const actorLoad = bulkBySize[actorSize] + calculateBulk(itemsFromActorData(a.data), stacks, false, bulkConfig)[0].normal;
+					totalRiderLoad += actorLoad;
+					riderLoad.push(actorLoad);
 				}
 
-				for (const item of this.actor.items.entries) {
-					const weightValue = item.data.data.weight.value;
-					const itemWeight =
-						(weightValue ==='-')	? 0 : 
-						(weightValue === 'L') 	? 0.1 : parseInt(weightValue);
-					const itemQuantity = item.data.data.quantity.value;
-					carriedLoad += itemWeight * itemQuantity;
+				let currentRiderIndex = 0;
+				for (const a of porterActors)
+				{
+					let actorLoad = calculateBulk(itemsFromActorData(a.data), stacks, false, bulkConfig)[0].normal;
+					const bonusEncumbranceBulk = 0;
+					const bonusLimitBulk = 0;
+					const loadCapacity = calculateEncumbrance(
+						a.data.data.abilities.str.mod,
+						bonusEncumbranceBulk,
+						bonusLimitBulk,
+						(currentRiderIndex < riderLoad.length) ? actorLoad[0] + riderLoad[currentRiderIndex] : actorLoad[0],
+						a.data.data?.traits?.size?.value ?? 'med',  
+					  );
+
+					if (currentRiderIndex < riderLoad.length)
+					{
+						actorLoad += riderLoad[currentRiderIndex];
+						const SADDLEBAG_CAPACITY = 6;
+						const unencumberedCapacity = Math.min(SADDLEBAG_CAPACITY, Math.max(0, loadCapacity.encumberedAt - actorLoad));
+						partyData.load.unencumbered.max += unencumberedCapacity;
+						partyData.load.encumbered.max += Math.min(SADDLEBAG_CAPACITY - unencumberedCapacity, loadCapacity.limit - loadCapacity.encumberedAt);
+					}
+					else
+					{
+						partyData.load.unencumbered.max += loadCapacity.encumberedAt;
+						partyData.load.encumbered.max += loadCapacity.limit - loadCapacity.encumberedAt;
+					}
+					currentRiderIndex += 1;
+
+					if (a.data.data.attributes.speed && a.data.data.attributes.speed.value)
+					{
+						const actorSpeed = Number(a.data.data.attributes.speed.value.split(" ")[0]);
+						partyData.speed.max = Math.min(partyData.speed.max, actorSpeed);
+					}
 				}
 
-				partyData.load.unencumbered.max = 18;
+				//carriedLoad += totalRiderLoad;
+
 				partyData.load.unencumbered.current = Math.min(carriedLoad, partyData.load.unencumbered.max);
 				carriedLoad = carriedLoad - partyData.load.unencumbered.current;
-				
-				partyData.load.encumbered.max = 10;
 				partyData.load.encumbered.current = carriedLoad;
-
-				partyData.speed.max = 40;
-				partyData.speed.current = 30;
+				partyData.speed.current = (partyData.load.encumbered.current > 0) ? partyData.speed.max - 10 : partyData.speed.max;
 
 				renderData['party'] = partyData;
 
@@ -104,7 +151,6 @@ function extendLootSheet()
             super.activateListeners(html);
 
             html.find('select').on('input', (event) => {
-				// @ts-ignore
                 this._onSubmit(event);
             });
         }
