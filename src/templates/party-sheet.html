@@ -16,7 +16,7 @@
         <div class="partysheet-sidebar-row">
             <div class="partysheet-sidebar-label">Maximum Speed:</div>
             <div class="partysheet-sidebar-data">
-                {{numberFormat party.speed.max decimals=0 sign=false}} ft.
+                {{numberFormat party.speed.limit decimals=0 sign=false}} ft.
             </div>
         </div>
         <div class="partysheet-sidebar-row">
@@ -27,24 +27,40 @@
         </div>
         <h2>Load</h2>
         <div class="partysheet-sidebar-row">
-            <div class="partysheet-sidebar-label">Unecumbered:</div>
+            <div class="partysheet-sidebar-label">Rider Bulk:</div>
             <div class="partysheet-sidebar-data">
-                <div>{{numberFormat party.load.unencumbered.current decimals=0 sign=false}}</div>
-                <div style="width: 15%"> / </div>
-                <div>{{numberFormat party.load.unencumbered.max decimals=0 sign=false}}</div>
+                {{numberFormat party.load.riders decimals=0 sign=false}}
             </div>
         </div>
         <div class="partysheet-sidebar-row">
-            <div class="partysheet-sidebar-label">Encumbered:</div>
+            <div class="partysheet-sidebar-label">Cargo Bulk:</div>
             <div class="partysheet-sidebar-data">
-                <div>{{numberFormat party.load.encumbered.current decimals=0 sign=false}}</div>
-                <div style="width: 15%"> / </div>
-                <div>{{numberFormat party.load.encumbered.max decimals=0 sign=false}}</div>
+                {{numberFormat party.load.cargo.current decimals=0 sign=false}}
+            </div>
+        </div>
+        <div class="partysheet-sidebar-row">
+            <div class="partysheet-sidebar-label">Cargo Capacity:</div>
+            <div class="partysheet-sidebar-data">
+                <div>{{numberFormat party.load.cargo.encumberedAt decimals=0 sign=false}}</div>
+                <div style="width: 15%"> | </div>
+                <div>{{numberFormat party.load.cargo.limit decimals=0 sign=false}}</div>
+            </div>        </div>
+        <div class="partysheet-sidebar-row">
+            <div class="partysheet-sidebar-label">Total Bulk:</div>
+            <div class="partysheet-sidebar-data">{{numberFormat party.load.total.current decimals=0 sign=false}}</div>
+        </div>
+        <div class="partysheet-sidebar-row">
+            <div class="partysheet-sidebar-label">Total Capacity:</div>
+            <div class="partysheet-sidebar-data">
+                <div>{{numberFormat party.load.total.encumberedAt decimals=0 sign=false}}</div>
+                <div style="width: 15%"> | </div>
+                <div>{{numberFormat party.load.total.limit decimals=0 sign=false}}</div>
             </div>
         </div>
     </section>
     <!-- BODY -->
     <section class="sheet-body content">
+
         <nav class="sheet-navigation" data-group="primary">
             <nav class="sheet-tabs tabs" data-group="primary">
                 <a class="item active" data-tab="inventory">Inventory</a>
@@ -53,11 +69,41 @@
         </nav>
 
         <div class="sheet-content sheet-content-loot">
+            <!-- Party Inventory -->
             <div class="tab inventory" data-group="primary" data-tab="inventory">
                 {{> systems/pf2e/templates/actors/loot/loot-inventory.html }}
             </div>
+            <!-- Party Management -->
             <div class="tab party" data-group="primary" data-tab="party">
+                <ol class="inventory-list directory-list inventory-pane partysheet-party-pane">
+                    <li class="item inventory-header">
+                        <h3 class="item-name">Party</h3>
+                        <span class="item-quantity">Mount</span>
+                        <span class="item-quantity">Bulk</span>
+                        <span class="item-quantity">Speed</span>
+                    </li>
+                    {{#each party.members}}
+                        {{> modules/patchwork-sea/templates/party-member-line.html member=this mounts=../party.mounts }}
+                    {{/each}}
+                    <li class="item inventory-header">
+                        <h3 class="item-name">Mounts</h3>
+                        <span class="item-quantity">Rider(s)</span>
+                        <span class="item-quantity">Cargo</span>
+                        <span class="item-quantity">Load</span>
+                        <span class="item-quantity">Speed</span>
+                    </li>
+                    {{#each party.mounts as |mount|}}
+                    <li class="item" data-item-id="{{mount.id}}">
+                        <h4>{{mount.name}}</h4>
+                        <span class="item-quantity">Rider(s)<br/>{{mount.load.riders}}</span>
+                        <span class="item-quantity">{{mount.load.cargo.current}} / {{mount.load.cargo.limit}}</span>
+                        <span class="item-quantity">{{mount.load.current}}<br/> ({{mount.load.encumberedAt}} / {{mount.load.limit}})</span>
+                        <span class="item-quantity">{{mount.speed.current}} ft.</span>
+                    </li>
+                    {{/each}}
+                </ol>
             </div>
         </div>
+
     </section>
 </form>

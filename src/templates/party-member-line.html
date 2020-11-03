@@ -1,0 +1,17 @@
+<li class="item" data-item-id="{{member.id}}">
+    <h4>{{member.name}}</h4>
+    <span class="item-quantity">
+        <div class="form-group">                            
+            <select class="partysheet-select-mount" id="flags.PWS.party-selectmount-{{member.id}}" name="flags.PWS.party-selectmount-{{member.id}}" member-id="{{member.id}}">
+                {{#select member.mount}}
+                    <option>None</option>
+                    {{#each mounts as |mount|}}
+                        <option value="{{mount.id}}">{{mount.name}}</option>
+                    {{/each}}
+                {{/select}}
+            </select>
+        </div>
+    </span>
+    <span class="item-quantity">{{member.bulk}}</span>
+    <span class="item-quantity">{{member.speed.current}} ft.</span>
+</li>

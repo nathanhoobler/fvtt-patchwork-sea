@@ -1,8 +1,7 @@
 import { calculateBulk, itemsFromActorData, stacks, formatBulk, indexBulkItemsById } from '../system/item/bulk.js';
 import { calculateEncumbrance } from '../system/item/encumbrance';
 import { getContainerMap } from '../system/item/container';
-import { PWS } from './config.js';
-const MODULE_TEMPLATE_PATH = `modules/${PWS.MODULE_NAME}/templates`;
+import { PWS, MODULE_TEMPLATE_PATH } from './config.js';
 
 
 ///////////////////////////////////////////////////////////////////////////////.
@@ -16,13 +15,30 @@ export const bulkBySize = {
     grg: 48
 };
 
+export function calculateBulkBySize(actor)
+{
+	const actorSize = actor.data.data?.traits?.size?.value ?? 'med';
+	return bulkBySize[actorSize];
+}
+
+export function getSpeed(actor)
+{
+	if (actor.data.data.attributes.speed && actor.data.data.attributes.speed.value)
+	{
+		return Number(actor.data.data.attributes.speed.value.split(" ")[0]);
+	}
+	else
+	{
+		return undefined;
+	}
+}
+
 ///////////////////////////////////////////////////////////////////////////////.
 
 function extendLootSheet()
 {
 	type ActorSheetConstructor = new (...args: any[]) => ActorSheet;
 	const BaseSheetClass: ActorSheetConstructor = CONFIG.Actor.sheetClasses['loot']['pf2e.ActorSheetPF2eLoot'].cls;
-	//const BaseSheetClass = CONFIG.Actor.sheetClasses['loot']['pf2e.ActorSheetPF2eLoot'].cls;
 
     return class PartySheet extends BaseSheetClass {
 
@@ -48,21 +64,27 @@ function extendLootSheet()
 				renderData['flags'] = this.actor.data.flags;
 				
 				let partyData = {
+					members: [],
+					mounts: [],
 					load: {
-						unencumbered: {
+						riders: 0,
+						cargo: {
 							current: 0,
-							max: 0
+							encumberedAt: 0,
+							limit: 0
 						},
-						encumbered: {
+						total: {
 							current: 0,
-							max: 0
+							encumberedAt: 0,
+							limit: 0
 						}
 					},
 					speed: {
 						current: 0,
-						max: 0,
+						limit: 0,
 					}
 				};
+				partyData.speed.limit = 120;
 
 				// Iterate through items, allocating to containers
 				const bulkConfig = {
@@ -71,76 +93,148 @@ function extendLootSheet()
 				};
 
 				const carriedBulk = calculateBulk(itemsFromActorData(this.actor.data), stacks, false, bulkConfig);
-				let carriedLoad = carriedBulk[0].normal;
-				partyData.speed.max = 120;
+				partyData.load.cargo.current = carriedBulk[0].normal;
 
-				const partyActors = [];
-				const porterActors = [];
-
-				for (const a of game.actors.entities) {
-					if (a.folder)
+				for (const actor of game.actors.entities) {
+					if (actor.folder)
 					{
-						const folderName = a.folder.data.name;
+						const folderName = actor.folder.data.name;
+
 						if (folderName === 'Party')
-							partyActors.push(a);
+						{
+							partyData.members.push({
+								id: actor.id,
+								name: actor.name,
+								mount: actor.getFlag(PWS.MODULE_NAME, "mountId"),
+								// @ts-ignore
+								bulk: calculateBulkBySize(actor) + calculateBulk(itemsFromActorData(actor.data), stacks, false, bulkConfig)[0].normal,
+								speed: {
+									current: getSpeed(actor),
+									limit: getSpeed(actor)
+								}
+							});
+						}
+
 						if (folderName == 'Mounts')
-							porterActors.push(a);
+						{
+							// @ts-ignore
+							let actorLoad = calculateBulk(itemsFromActorData(actor.data), stacks, false, bulkConfig)[0];
+							const bonusEncumbranceBulk = 0;
+							const bonusLimitBulk = 0;
+							const loadCapacity = calculateEncumbrance(
+								actor.data.data.abilities.str.mod,
+								bonusEncumbranceBulk,
+								bonusLimitBulk,
+								actorLoad,
+								actor.data.data?.traits?.size?.value ?? 'med',  
+							  );
+							
+							let cargoCapacity = 0;
+							// @ts-ignore
+							for ( const item of actor.data.items )
+							{
+								const isEquipped = item.data?.equipped?.value ?? false;
+								const containerCapacity = item.data?.bulkCapacity?.value ?? 0;
+								if (isEquipped && containerCapacity > 0)
+								{
+									cargoCapacity = Math.max(cargoCapacity, Math.min(containerCapacity, loadCapacity.limit));
+								}
+							}
+							
+							partyData.mounts.push({
+								id: actor.id,
+								name: actor.name,
+								riders: [],
+								load: {
+									riders: 0,
+									cargo: {
+										current: 0,
+										unencumbered: cargoCapacity,
+										encumbered: cargoCapacity,
+										limit: cargoCapacity
+									},
+									current: loadCapacity.bulk,
+									encumberedAt: loadCapacity.encumberedAt,
+									limit: loadCapacity.limit
+								},
+								speed: {
+									current: getSpeed(actor),
+									limit: getSpeed(actor)
+								}
+							});
+
+							partyData.load.total.encumberedAt += loadCapacity.encumberedAt;
+							partyData.load.total.limit += loadCapacity.limit;
+						}
 					}
 				}
 
-				let riderLoad = [];
-				let totalRiderLoad = 0;
-				for (const a of partyActors)
+				// Account for bulk from mounted riders
+				for (const mount of partyData.mounts)
 				{
-					const actorSize = a.data.data?.traits?.size?.value ?? 'med';
-					const actorLoad = bulkBySize[actorSize] + calculateBulk(itemsFromActorData(a.data), stacks, false, bulkConfig)[0].normal;
-					totalRiderLoad += actorLoad;
-					riderLoad.push(actorLoad);
+					for (const member of partyData.members)
+					{
+						if (member.mount === mount.id)
+						{
+							mount.riders.push(member.id);
+							mount.load.riders += member.bulk;
+						}
+					}
+					partyData.load.riders += mount.load.riders;
+					mount.load.current += mount.load.riders;
+					mount.load.cargo.unencumbered = Math.max(0, Math.min(mount.load.cargo.limit, mount.load.encumberedAt - mount.load.current));
+					mount.load.cargo.encumbered = Math.max(0, Math.min(mount.load.cargo.limit, mount.load.limit - mount.load.current));
+
+					partyData.load.cargo.encumberedAt += mount.load.cargo.unencumbered;
+					partyData.load.cargo.limit += mount.load.cargo.encumbered;
 				}
 
-				let currentRiderIndex = 0;
-				for (const a of porterActors)
+				// Assign Cargo bulk to mounts
+				let cargoBulk = partyData.load.cargo.current;
+				while (cargoBulk > 0)
 				{
-					let actorLoad = calculateBulk(itemsFromActorData(a.data), stacks, false, bulkConfig)[0].normal;
-					const bonusEncumbranceBulk = 0;
-					const bonusLimitBulk = 0;
-					const loadCapacity = calculateEncumbrance(
-						a.data.data.abilities.str.mod,
-						bonusEncumbranceBulk,
-						bonusLimitBulk,
-						(currentRiderIndex < riderLoad.length) ? actorLoad[0] + riderLoad[currentRiderIndex] : actorLoad[0],
-						a.data.data?.traits?.size?.value ?? 'med',  
-					  );
+					let bestCandidateIndex = 0;
+					let bestInterval = 1;
+					for (const [idx, mount] of partyData.mounts.entries())
+					{
+						const bestMount = partyData.mounts[bestCandidateIndex];
 
-					if (currentRiderIndex < riderLoad.length)
-					{
-						actorLoad += riderLoad[currentRiderIndex];
-						const SADDLEBAG_CAPACITY = 6;
-						const unencumberedCapacity = Math.min(SADDLEBAG_CAPACITY, Math.max(0, loadCapacity.encumberedAt - actorLoad));
-						partyData.load.unencumbered.max += unencumberedCapacity;
-						partyData.load.encumbered.max += Math.min(SADDLEBAG_CAPACITY - unencumberedCapacity, loadCapacity.limit - loadCapacity.encumberedAt);
+						if ((bestMount.load.cargo.current >= bestMount.load.cargo.encumbered) && ((mount.load.cargo.current - mount.load.cargo.limit) < (bestMount.load.cargo.current - bestMount.load.cargo.limit)))
+						{
+							bestCandidateIndex = idx;
+							bestInterval = 1;
+						}
+						else if ((bestMount.load.cargo.current >= bestMount.load.cargo.unencumbered) && ((mount.load.cargo.encumbered - mount.load.cargo.current) > (bestMount.load.cargo.encumbered - bestMount.load.cargo.current)))
+						{
+							bestCandidateIndex = idx;
+							bestInterval = mount.load.cargo.encumbered - mount.load.cargo.current;
+						}
+						else if((mount.load.cargo.unencumbered - mount.load.cargo.current) > (bestMount.load.cargo.unencumbered - bestMount.load.cargo.current))
+						{
+							bestCandidateIndex = idx;
+							bestInterval = mount.load.cargo.unencumbered - mount.load.cargo.current;
+						}
 					}
-					else
-					{
-						partyData.load.unencumbered.max += loadCapacity.encumberedAt;
-						partyData.load.encumbered.max += loadCapacity.limit - loadCapacity.encumberedAt;
-					}
-					currentRiderIndex += 1;
 
-					if (a.data.data.attributes.speed && a.data.data.attributes.speed.value)
-					{
-						const actorSpeed = Number(a.data.data.attributes.speed.value.split(" ")[0]);
-						partyData.speed.max = Math.min(partyData.speed.max, actorSpeed);
-					}
+					bestInterval = Math.min(bestInterval, cargoBulk);
+					cargoBulk -= bestInterval;
+					partyData.mounts[bestCandidateIndex].load.cargo.current += bestInterval;
 				}
 
-				//carriedLoad += totalRiderLoad;
+				// Compute total load information				
+				partyData.load.total.current = partyData.load.riders + partyData.load.cargo.current;
 
-				partyData.load.unencumbered.current = Math.min(carriedLoad, partyData.load.unencumbered.max);
-				carriedLoad = carriedLoad - partyData.load.unencumbered.current;
-				partyData.load.encumbered.current = carriedLoad;
-				partyData.speed.current = (partyData.load.encumbered.current > 0) ? partyData.speed.max - 10 : partyData.speed.max;
-
+				// Compute party speed
+				for (const mount of partyData.mounts)
+				{
+					mount.load.current += mount.load.cargo.current;
+					if (mount.speed.limit)
+					{
+						mount.speed.current = (mount.load.current > mount.load.encumberedAt) ? mount.speed.limit - 10 : mount.speed.limit;
+						partyData.speed.limit = Math.min(partyData.speed.limit, mount.speed.limit);
+						partyData.speed.current = Math.min(partyData.speed.current, mount.speed.current);
+					}
+				}
 				renderData['party'] = partyData;
 
                 resolve(renderData);
@@ -150,14 +244,22 @@ function extendLootSheet()
         activateListeners(html) {
             super.activateListeners(html);
 
-            html.find('select').on('input', (event) => {
-                this._onSubmit(event);
+            html.find('select.partysheet-select-mount').on('change', (event) => {
+                this.onMountSelect(event);
             });
         }
 
         async _onDrop(event) {
 			return super._onDrop(event);
-        }
+		}
+		
+		async onMountSelect(event) {
+			const memberId = event.currentTarget.attributes["member-id"].nodeValue;
+			const mountId = event.currentTarget.value;
+			game.actors.get(memberId).setFlag(PWS.MODULE_NAME, "mountId", mountId);
+			//super.submit({});
+			super.render(false, {});
+		}
     };
 }
 
