@@ -96,78 +96,73 @@ function extendLootSheet()
 				const carriedBulk = calculateBulk(itemsFromActorData(this.actor.data), stacks, false, bulkConfig);
 				partyData.load.cargo.current = carriedBulk[0].normal;
 
-				for (const actor of game.actors.entities) {
-					if (actor.folder)
-					{
-						const folderName = actor.folder.data.name;
-
-						if (folderName === 'Party')
-						{
-							partyData.members.push({
-								id: actor.id,
-								name: actor.name,
-								mount: actor.getFlag(PWS.MODULE_NAME, "mountId"),
-								// @ts-ignore
-								bulk: calculateBulkBySize(actor) + calculateBulk(itemsFromActorData(actor.data), stacks, false, bulkConfig)[0].normal,
-								speed: {
-									current: getSpeed(actor),
-									limit: getSpeed(actor)
-								}
-							});
+				for (const actor of game.actors.filter( function (a) {
+						return ((a.folder != undefined) && (a.folder.data.name === "Party"));
+					} )) {
+					partyData.members.push({
+						id: actor.id,
+						name: actor.name,
+						mount: actor.getFlag(PWS.MODULE_NAME, "mountId"),
+						// @ts-ignore
+						bulk: calculateBulkBySize(actor) + calculateBulk(itemsFromActorData(actor.data), stacks, false, bulkConfig)[0].normal,
+						speed: {
+							current: getSpeed(actor),
+							limit: getSpeed(actor)
 						}
+					});
+				}
 
-						if (folderName == 'Mounts')
+				for (const actor of game.actors.filter( function (a) {
+						return ((a.folder != undefined) && (a.folder.data.name === "Mounts"));
+					} )) {
+					// @ts-ignore
+					let actorLoad = calculateBulk(itemsFromActorData(actor.data), stacks, false, bulkConfig)[0];
+					const bonusEncumbranceBulk = 0;
+					const bonusLimitBulk = 0;
+					const loadCapacity = calculateEncumbrance(
+						actor.data.data.abilities.str.mod,
+						bonusEncumbranceBulk,
+						bonusLimitBulk,
+						actorLoad,
+						actor.data.data?.traits?.size?.value ?? 'med',  
+						);
+					
+					let cargoCapacity = 0;
+					// @ts-ignore
+					for ( const item of actor.data.items )
+					{
+						const isEquipped = item.data?.equipped?.value ?? false;
+						const containerCapacity = item.data?.bulkCapacity?.value ?? 0;
+						if (isEquipped && containerCapacity > 0)
 						{
-							// @ts-ignore
-							let actorLoad = calculateBulk(itemsFromActorData(actor.data), stacks, false, bulkConfig)[0];
-							const bonusEncumbranceBulk = 0;
-							const bonusLimitBulk = 0;
-							const loadCapacity = calculateEncumbrance(
-								actor.data.data.abilities.str.mod,
-								bonusEncumbranceBulk,
-								bonusLimitBulk,
-								actorLoad,
-								actor.data.data?.traits?.size?.value ?? 'med',  
-							  );
-							
-							let cargoCapacity = 0;
-							// @ts-ignore
-							for ( const item of actor.data.items )
-							{
-								const isEquipped = item.data?.equipped?.value ?? false;
-								const containerCapacity = item.data?.bulkCapacity?.value ?? 0;
-								if (isEquipped && containerCapacity > 0)
-								{
-									cargoCapacity = Math.max(cargoCapacity, Math.min(containerCapacity, loadCapacity.limit));
-								}
-							}
-							
-							partyData.mounts.push({
-								id: actor.id,
-								name: actor.name,
-								riders: [],
-								load: {
-									riders: 0,
-									cargo: {
-										current: 0,
-										unencumbered: cargoCapacity,
-										encumbered: cargoCapacity,
-										limit: cargoCapacity
-									},
-									current: loadCapacity.bulk,
-									encumberedAt: loadCapacity.encumberedAt,
-									limit: loadCapacity.limit
-								},
-								speed: {
-									current: getSpeed(actor),
-									limit: getSpeed(actor)
-								}
-							});
-
-							partyData.load.total.encumberedAt += loadCapacity.encumberedAt;
-							partyData.load.total.limit += loadCapacity.limit;
+							cargoCapacity = Math.max(cargoCapacity, Math.min(containerCapacity, loadCapacity.limit));
 						}
 					}
+					
+					partyData.mounts.push({
+						id: actor.id,
+						name: actor.name,
+						riders: [],
+						load: {
+							riders: 0,
+							cargo: {
+								current: 0,
+								unencumbered: cargoCapacity,
+								encumbered: cargoCapacity,
+								limit: cargoCapacity
+							},
+							current: loadCapacity.bulk,
+							encumberedAt: loadCapacity.encumberedAt,
+							limit: loadCapacity.limit
+						},
+						speed: {
+							current: getSpeed(actor),
+							limit: getSpeed(actor)
+						}
+					});
+
+					partyData.load.total.encumberedAt += loadCapacity.encumberedAt;
+					partyData.load.total.limit += loadCapacity.limit;
 				}
 
 				// Account for bulk from mounted riders
