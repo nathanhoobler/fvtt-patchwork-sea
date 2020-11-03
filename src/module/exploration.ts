@@ -129,14 +129,11 @@ function extendLootSheet()
 					
 					let cargoCapacity = 0;
 					// @ts-ignore
-					for ( const item of actor.data.items )
-					{
-						const isEquipped = item.data?.equipped?.value ?? false;
+					for ( const item of actor.data.items.filter(function (i) {
+						return (i.data?.equipped?.value ?? false) && ((i.data?.bulkCapacity?.value ?? 0) > 0);
+					} )) {
 						const containerCapacity = item.data?.bulkCapacity?.value ?? 0;
-						if (isEquipped && containerCapacity > 0)
-						{
-							cargoCapacity = Math.max(cargoCapacity, Math.min(containerCapacity, loadCapacity.limit));
-						}
+						cargoCapacity = Math.max(cargoCapacity, Math.min(containerCapacity, loadCapacity.limit));
 					}
 					
 					partyData.mounts.push({
