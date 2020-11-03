@@ -102,7 +102,7 @@ function extendLootSheet()
 					partyData.members.push({
 						id: actor.id,
 						name: actor.name,
-						mount: actor.getFlag(PWS.MODULE_NAME, "mountId"),
+						mount: actor.getFlag(PWS.MODULE_NAME, "mountId") ?? "None",
 						// @ts-ignore
 						bulk: calculateBulkBySize(actor) + calculateBulk(itemsFromActorData(actor.data), stacks, false, bulkConfig)[0].normal,
 						speed: {
@@ -218,6 +218,13 @@ function extendLootSheet()
 				partyData.load.total.current = partyData.load.riders + partyData.load.cargo.current;
 
 				// Compute party speed
+				for (const member of partyData.members.filter(function (m) {
+					return m.mount === "None";
+				} )) {
+					partyData.speed.limit = Math.min(partyData.speed.limit, member.speed.limit);
+					partyData.speed.current = Math.min(partyData.speed.current, member.speed.current);
+				}
+
 				for (const mount of partyData.mounts)
 				{
 					mount.load.current += mount.load.cargo.current;
