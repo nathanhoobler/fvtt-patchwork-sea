@@ -85,6 +85,7 @@ function extendLootSheet()
 					}
 				};
 				partyData.speed.limit = 120;
+				partyData.speed.current = 120;
 
 				// Iterate through items, allocating to containers
 				const bulkConfig = {
