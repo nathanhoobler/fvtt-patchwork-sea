@@ -95,7 +95,7 @@
                     {{#each party.mounts as |mount|}}
                     <li class="item" data-item-id="{{mount.id}}">
                         <h4>{{mount.name}}</h4>
-                        <span class="item-quantity">Rider(s)<br/>{{mount.load.riders}}</span>
+                        <span class="item-quantity">{{mount.load.riders}}</span>
                         <span class="item-quantity">{{mount.load.cargo.current}} / {{mount.load.cargo.limit}}</span>
                         <span class="item-quantity">{{mount.load.current}}<br/> ({{mount.load.encumberedAt}} / {{mount.load.limit}})</span>
                         <span class="item-quantity">{{mount.speed.current}} ft.</span>
